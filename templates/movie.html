@@ -1,0 +1,71 @@
+{% extends "layout.html" %}
+{% block content %}
+<article class="card p-4 mb-4 shadow-sm">
+    <div class="d-flex align-items-start gap-4">
+        <!-- Movie Poster -->
+        <img class="rounded border flex-shrink-0" src="{{ movie.poster_path }}" alt="{{ movie.title }} Poster"
+            width="150" height="225" style="object-fit: cover;" loading="lazy">
+        <div class="flex-grow-1">
+            <div class="mb-2">
+                <span class="badge bg-secondary me-2">Director</span>
+                <span class="text-body-secondary font-monospace">{{ movie.director }}</span>
+            </div>
+            <h2 class="article-title text-primary">{{ movie.title }}</h2>
+            <p class="mt-3">
+                Seats Available:
+                <span class="badge {{ 'bg-success' if movie.seats_available > 160 else 'bg-warning text-dark' }}">
+                    {{ movie.seats_available }}
+                </span>
+            </p>
+
+            <!-- Movie actions (Edit / Delete) -->
+            <div class="post-actions mt-4 pt-3 border-top">
+                <a class="btn btn-outline-secondary me-1" href="{{ url_for('get_movie_form', movie_id=movie.id) }}">Edit Movie</a>
+                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
+                    data-bs-target="#deleteModal">Delete Movie</button>
+            </div>
+        </div>
+    </div>
+</article>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Delete Movie?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <!-- TODO: <form action="#" method="post"> -->
+            <form action="{{ url_for('delete_movie', movie_id=movie.id) }}" method="post">
+                <div class="modal-body">Are you sure you want to delete this movie? This action cannot be undone.</div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-outline-danger">Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="mt-5">
+    <h3 class="text-primary mb-3">Current Bookings</h3>
+    {% if movie.bookings %}
+    <ul class="list-group">
+        {% for booking in movie.bookings %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+                <strong>{{ booking.user.username }}</strong>
+                <span class="text-muted">({{ booking.user.email }})</span>
+            </div>
+            <span class="badge bg-primary rounded-pill">
+                {{ booking.seats_booked }} seats at {{ booking.show_time }}
+            </span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-muted">No bookings made for this movie yet.</p>
+    {% endif %}
+</div>
+{% endblock content %}

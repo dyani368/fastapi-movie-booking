@@ -1,0 +1,30 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="card p-4 shadow-sm">
+    <h2 class="text-primary mb-4">Add a New Movie</h2>
+
+    <form action="{{ url_for('create_movie_html') }}" method="post">
+        <!-- Movie Title -->
+        <div class="mb-3">
+            <label for="title" class="form-label">Movie Title</label>
+            <input type="text" class="form-control" id="title" name="title" required minlength="1" maxlength="20">
+        </div>
+
+        <!-- Director -->
+        <div class="mb-3">
+            <label for="director" class="form-label">Director</label>
+            <input type="text" class="form-control" id="director" name="director" required minlength="1">
+        </div>
+
+        <!-- Seats Available -->
+        <div class="mb-3">
+            <label for="seats_available" class="form-label">Seats Available</label>
+            <input type="number" class="form-control" id="seats_available" name="seats_available" required min="1">
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" class="btn btn-primary">Create Movie</button>
+        <a href="{{ url_for('root') }}" class="btn btn-outline-secondary ms-2">Cancel</a>
+    </form>
+</div>
+{% endblock content %}

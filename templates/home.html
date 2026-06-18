@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+{% block content %}
+<h1 class="mb-4">Currently Showing Movies</h1>
+
+{% for movie in movies %}
+<article class="card p-3 mb-4 shadow-sm">
+  <div class="d-flex align-items-start gap-4">
+    <!-- Movie Poster Placeholder -->
+    <img class="rounded border flex-shrink-0" src="{{movie.poster_path}}" alt="{{ movie.title }} Poster" width="100"
+      height="150" style="object-fit: cover;" loading="lazy">
+
+    <div class="flex-grow-1">
+      <div class="mb-2">
+        <span class="badge bg-secondary me-2">Director</span>
+        <span class="text-body-secondary font-monospace">{{ movie.director }}</span>
+      </div>
+      <h2>
+        <a class="text-decoration-none text-primary" href="{{ url_for('get_movie', movie_id=movie.id) }}">{{ movie.title
+          }}</a>
+      </h2>
+      <p class="mt-3">
+        Seats Available:
+        <span class="badge {{ 'bg-success' if movie.seats_available > 160 else 'bg-warning text-dark' }}">
+          {{ movie.seats_available }}
+        </span>
+      </p>
+    </div>
+  </div>
+</article>
+{% endfor %}
+{% endblock content %}

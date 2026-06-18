@@ -1,0 +1,53 @@
+/* Custom Styles for FastAPI Movies */
+
+body {
+    background-color: #f8f9fa;
+    font-family: 'Nunito', 'Montserrat', sans-serif;
+}
+
+[data-bs-theme="dark"] body {
+    background-color: #121212;
+}
+
+.site-header .navbar {
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    backdrop-filter: blur(10px);
+}
+
+.card {
+    border: none;
+    border-radius: 12px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-bs-theme="dark"] .card {
+    background-color: #1e1e1e;
+}
+
+.article-title {
+    font-weight: 700;
+    color: #0d6efd;
+}
+
+[data-bs-theme="dark"] .article-title {
+    color: #0dcaf0;
+}
+
+.badge {
+    font-size: 0.85rem;
+    padding: 0.4em 0.8em;
+}
+
+footer {
+    background-color: #ffffff;
+}
+
+[data-bs-theme="dark"] footer {
+    background-color: #1a1a1a;
+    border-top-color: #2d2d2d !important;
+}
