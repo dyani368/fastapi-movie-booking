@@ -19,8 +19,6 @@ from routers import movies, users, bookings
 
 from auth import hash_password, verify_password, create_access_token, get_current_user, get_current_user_from_cookie, get_admin_user, get_optional_current_user
 
-Base.metadata.create_all(bind=engine)
-
 # Get the absolute path of the directory containing main.py
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
