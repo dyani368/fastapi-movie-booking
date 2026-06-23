@@ -48,6 +48,31 @@
     </div>
 </div>
 
+<!-- Book Tickets Form -->
+<div class="mt-4 p-4 border rounded bg-light">
+    <h3 class="text-primary mb-3">Book Tickets</h3>
+    <form action="{{ url_for('book_movie_html', movie_id=movie.id) }}" method="post" class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label for="seats_booked" class="form-label">Number of Seats</label>
+            <input type="number" class="form-control" id="seats_booked" name="seats_booked" required min="1" max="{{ movie.seats_available }}">
+        </div>
+        <div class="col-md-5">
+            <label for="show_time" class="form-label">Show Time</label>
+            <!-- A nice dropdown of times instead of a generic text box -->
+            <select class="form-select" id="show_time" name="show_time" required>
+                <option value="" selected disabled>Select a time...</option>
+                <option value="12:00 PM">12:00 PM</option>
+                <option value="3:30 PM">3:30 PM</option>
+                <option value="7:00 PM">7:00 PM</option>
+                <option value="10:15 PM">10:15 PM</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-success w-100">Book Now</button>
+        </div>
+    </form>
+</div>
+
 <div class="mt-5">
     <h3 class="text-primary mb-3">Current Bookings</h3>
     {% if movie.bookings %}

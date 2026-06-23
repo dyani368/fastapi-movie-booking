@@ -1,6 +1,11 @@
 {% extends "layout.html" %}
 {% block content %}
-<h1 class="mb-4">Currently Showing Movies</h1>
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="mb-0">Currently Showing Movies</h1>
+  {% if current_user and current_user.is_admin %}
+  <a href="{{ url_for('create_movie_form') }}" class="btn btn-primary">+ Add Movie</a>
+  {% endif %}
+</div>
 
 {% for movie in movies %}
 <article class="card p-3 mb-4 shadow-sm">
@@ -28,4 +33,25 @@
   </div>
 </article>
 {% endfor %}
+<!-- Pagination Controls -->
+<nav aria-label="Movie pagination" class="mt-4">
+  <ul class="pagination justify-content-center">
+    
+    <!-- Previous Button -->
+    <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+      <a class="page-link" href="{{ url_for('root') }}?page={{ page - 1 }}">Previous</a>
+    </li>
+
+    <!-- Current Page Display -->
+    <li class="page-item disabled">
+      <span class="page-link text-dark fw-bold">Page {{ page }} of {{ total_pages }}</span>
+    </li>
+
+    <!-- Next Button -->
+    <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+      <a class="page-link" href="{{ url_for('root') }}?page={{ page + 1 }}">Next</a>
+    </li>
+
+  </ul>
+</nav>
 {% endblock content %}

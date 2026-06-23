@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, EmailStr
 from datetime import datetime
 
 class MovieBase(BaseModel):
@@ -23,7 +23,7 @@ class MovieUpdate(BaseModel):
 
 class UserBase(BaseModel):
     username : str = Field(min_length = 3, max_length = 15)
-    email : str
+    email : EmailStr
 
 class UserCreate(UserBase):
     password : str = Field(min_length = 8)
