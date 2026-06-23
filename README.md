@@ -26,9 +26,9 @@ venv\Scripts\activate
 ```
 2. Install teh required dependencies:
 ```bash
-   pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 3. Start the FastAPI development server
-   ```bash
-   fastapi dev main.py
-   ```
+```bash
+fastapi dev main.py
+ ```
