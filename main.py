@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 
 from typing import Annotated 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, text
 from sqlalchemy.orm import Session 
 
 from schemas import UserCreate
@@ -31,6 +31,21 @@ app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), na
 app.mount("/media", StaticFiles(directory ="media"), name = "media")
 
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
+
+@app.get("/health")
+def health(db: Annotated[Session, Depends(get_db)]):
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail = "Database unavailable"
+        ) from exc
+    
+    return {"status" : "healthy"}
+
+
+
 
 @app.get("/", include_in_schema = False)
 def root(
