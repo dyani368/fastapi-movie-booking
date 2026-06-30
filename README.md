@@ -5,7 +5,7 @@ A full-stack movie booking system built with FastAPI, featuring role-based JWT A
 ## Features
 * **Role-Based Access Control:** Only admins can add, edit, or delete movies. Regular users can browse and book tickets.
 * **Booking Logic:** Users select the number of seats and showtime, and backend inventory math validates the transaction.
-* **Security:** JWT Authentication with HTTPOnly cookies for maximum security against XSS attacks.
+* **Security:** JWT authentication using HTTPOnly cookies to help protect authentication tokens from client-side JavaScript access. 
 * **Data Validation:** Form inputs are strictly validated using Pydantic schemas.
 * **Clean UI:** Server-rendered HTML utilizing Jinja2 templates and Bootstrap.
 * **Database:** Relational SQLite database modeled with SQLAlchemy and cascading deletes.
@@ -16,6 +16,36 @@ A full-stack movie booking system built with FastAPI, featuring role-based JWT A
 * SQLAlchemy & SQLite
 * Jinja2
 * Bootstrap
+
+## Architecture
+
+┌──────────────┐
+│    Client    │
+└──────┬───────┘
+       │ HTTP
+       ▼
+┌──────────────┐
+│ Nginx /      │
+│ Cloud Run    │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│ Gunicorn +   │
+│ FastAPI      │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│ SQLAlchemy   │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│ PostgreSQL   │
+│ (Neon)       │
+└──────────────┘
+
 
 ## Installation
 
@@ -47,11 +77,11 @@ This application is deployed on a Linux VPS using a traditional reverse-proxy ar
 * **Gunicorn & Systemd:** Gunicorn acts as a process manager with Uvicorn workers. Systemd runs Gunicorn in the background 24/7 and restarts it automatically if it crashes or if the server reboots.
 * **Nginx:** Acts as a reverse proxy. It listens on port 80 (HTTP) and forwards internet traffic to the local Gunicorn port (8000). It acts as a security buffer and load balancer so the FastAPI app isn't directly exposed to the raw internet.
 
-## Production Depolyment(Docker & Cloud Run)
+## Production Deployment(Docker & Cloud Run)
 
-This app is also deployed on Google CLoud run using serverless Docker containers.
+This app is also deployed on Google Cloud run using serverless Docker containers.
 
-* **Google Cloud Run:** Fully managed, serverless platform which handles container hosting, completely repalaces Nginx and Systemd, and automatically scales up or down based on traffic.
+* **Google Cloud Run:** Fully managed, serverless platform which handles container hosting, completely replaces Nginx and Systemd, and automatically scales up or down based on traffic.
 
 * **Docker:** Open-Source platform that packages the application, Python and all the dependencies into a single, isolated, portable container.
 
