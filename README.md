@@ -38,7 +38,7 @@ alembic upgrade head
 fastapi dev main.py
 ```
 
-## Production Deployment Architecture
+## Production Deployment (Linux VPS)
 
 This application is deployed on a Linux VPS using a traditional reverse-proxy architecture:
 
@@ -46,3 +46,37 @@ This application is deployed on a Linux VPS using a traditional reverse-proxy ar
 * **Alembic:** Used for schema migrations (solves the problem of `create_all` not being able to alter existing tables).
 * **Gunicorn & Systemd:** Gunicorn acts as a process manager with Uvicorn workers. Systemd runs Gunicorn in the background 24/7 and restarts it automatically if it crashes or if the server reboots.
 * **Nginx:** Acts as a reverse proxy. It listens on port 80 (HTTP) and forwards internet traffic to the local Gunicorn port (8000). It acts as a security buffer and load balancer so the FastAPI app isn't directly exposed to the raw internet.
+
+## Production Depolyment(Docker & Cloud Run)
+
+This app is also deployed on Google CLoud run using serverless Docker containers.
+
+* **Google Cloud Run:** Fully managed, serverless platform which handles container hosting, completely repalaces Nginx and Systemd, and automatically scales up or down based on traffic.
+
+* **Docker:** Open-Source platform that packages the application, Python and all the dependencies into a single, isolated, portable container.
+
+* **PostgreSQL (Neon):** Managed cloud database.
+
+* **FastAPI Middleware:** Replaces Nginx for injecting our security headers into HTTP responses
+
+* **Build the Docker Image:**
+```bash
+docker build -t fastapi-image .
+```
+* **Run the Container Locally (For Testing):**
+```bash
+docker run -p 8080:8080 --env-file .env fastapi-app
+```
+* **Deploy to Google Cloud Run:**
+```bash
+# 1. Log into your Google account in the terminal
+gcloud auth login
+
+# 2. Tell the CLI which project you are targeting
+gcloud config set project <your-project-id>
+
+# 3. Deploy the source code! (Google will use your Dockerfile to build and host the app)
+gcloud run deploy fastapi-app --source . --region us-east1 --allow-unauthenticated
+```
+
+

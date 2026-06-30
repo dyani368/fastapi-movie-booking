@@ -44,8 +44,15 @@ def health(db: Annotated[Session, Depends(get_db)]):
     
     return {"status" : "healthy"}
 
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
 
+    response = await call_next(request)
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000;includeSubDomains"
 
+    return response
 
 @app.get("/", include_in_schema = False)
 def root(
