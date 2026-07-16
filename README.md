@@ -19,32 +19,38 @@ A full-stack movie booking system built with FastAPI, featuring role-based JWT A
 
 ## Architecture
 
-┌──────────────┐
-│    Client    │
-└──────┬───────┘
-       │ HTTP
-       ▼
-┌──────────────┐
-│ Nginx /      │
-│ Cloud Run    │
-└──────┬───────┘
-       │
-       ▼
-┌──────────────┐
-│ Gunicorn +   │
-│ FastAPI      │
-└──────┬───────┘
-       │
-       ▼
-┌──────────────┐
-│ SQLAlchemy   │
-└──────┬───────┘
-       │
-       ▼
-┌──────────────┐
-│ PostgreSQL   │
-│ (Neon)       │
-└──────────────┘
+```text
+Client
+  |
+  | HTTP
+  v
+FastAPI app
+  |
+  |-- Jinja2 templates render server-side HTML
+  |-- JWT auth with HTTPOnly cookies protects user sessions
+  |-- Role-based access controls admin-only movie management
+  |
+  v
+SQLAlchemy ORM
+  |
+  v
+PostgreSQL / Neon
+```
+
+### Booking Flow
+User selects movie, showtime, and seats
+  |
+  v
+FastAPI validates form input with Pydantic
+  |
+  v
+Backend checks available seat inventory
+  |
+  |-- Enough seats: create booking and reduce available seats
+  |-- Not enough seats: reject booking request
+  |
+  v
+SQLAlchemy commits transaction to PostgreSQL
 
 
 ## Installation
@@ -77,27 +83,26 @@ This application is deployed on a Linux VPS using a traditional reverse-proxy ar
 * **Gunicorn & Systemd:** Gunicorn acts as a process manager with Uvicorn workers. Systemd runs Gunicorn in the background 24/7 and restarts it automatically if it crashes or if the server reboots.
 * **Nginx:** Acts as a reverse proxy. It listens on port 80 (HTTP) and forwards internet traffic to the local Gunicorn port (8000). It acts as a security buffer and load balancer so the FastAPI app isn't directly exposed to the raw internet.
 
-## Production Deployment(Docker & Cloud Run)
+## Dockerized Local Deployment
 
-This app is also deployed on Google Cloud run using serverless Docker containers.
+This application is containerized with Docker and can run locally against a managed PostgreSQL database such as Neon.
 
-* **Google Cloud Run:** Fully managed, serverless platform which handles container hosting, completely replaces Nginx and Systemd, and automatically scales up or down based on traffic.
+Docker: Packages the FastAPI app, Python runtime, and dependencies into a portable container.
 
-* **Docker:** Open-Source platform that packages the application, Python and all the dependencies into a single, isolated, portable container.
+PostgreSQL (Neon): Managed cloud database used as the production database.
 
-* **PostgreSQL (Neon):** Managed cloud database.
+Alembic: Handles schema migrations instead of relying on create_all, which cannot safely alter existing tables.
 
-* **FastAPI Middleware:** Replaces Nginx for injecting our security headers into HTTP responses
+FastAPI Middleware: Adds application-level security headers to HTTP responses.
 
-* **Build the Docker Image:**
-```bash
-docker build -t fastapi-image .
-```
-* **Run the Container Locally (For Testing):**
-```bash
-docker run -p 8080:8080 --env-file .env fastapi-app
-```
-* **Deploy to Google Cloud Run:**
+Build the Docker Image:
+
+docker build -t fastapi-movie-booking .
+Run the Container Locally:
+docker run -p 8080:8080 --env-file .env fastapi-movie-booking
+
+* **Cloud Run Deployment Target:**
+The app is designed to be deployable to Google Cloud Run using the Dockerfile, but deployment requires an active Google Cloud billing account.
 ```bash
 # 1. Log into your Google account in the terminal
 gcloud auth login
