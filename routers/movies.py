@@ -6,6 +6,7 @@ from typing import Annotated
 import models
 from database import get_db
 from schemas import MovieResponse, MovieCreate, MovieUpdate
+from auth import get_current_user
 
 
 router = APIRouter()
@@ -34,8 +35,11 @@ def get_movie_api(movie_id: int, db: Annotated[Session, Depends(get_db)]):
     "", 
     response_model = MovieResponse, 
     status_code = status.HTTP_201_CREATED)
-def create_movie_api(movie : MovieCreate, db: Annotated[Session, Depends(get_db)]):
+def create_movie_api(movie : MovieCreate, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
     
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
     new_movie = models.Movie(title = movie.title, director = movie.director, seats_available = movie.seats_available)
 
     db.add(new_movie)
@@ -45,7 +49,10 @@ def create_movie_api(movie : MovieCreate, db: Annotated[Session, Depends(get_db)
     return new_movie
 
 @router.patch("/{movie_id}", response_model=MovieResponse)
-def update_movie_api(movie_id: int, movie_data: MovieUpdate, db: Annotated[Session, Depends(get_db)]):
+def update_movie_api(movie_id: int, movie_data: MovieUpdate, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
     movie = db.execute(select(models.Movie).where(models.Movie.id==movie_id)).scalars().first()
     if not movie:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movie not found")
@@ -61,7 +68,9 @@ def update_movie_api(movie_id: int, movie_data: MovieUpdate, db: Annotated[Sessi
     return movie
 
 @router.delete("/{movie_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_movie_api(movie_id: int, db: Annotated[Session, Depends(get_db)]):
+def delete_movie_api(movie_id: int, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
     movie=db.execute(select(models.Movie).where(movie_id==models.Movie.id)).scalars().first()
 

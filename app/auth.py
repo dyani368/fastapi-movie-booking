@@ -1,14 +1,15 @@
 from pwdlib import PasswordHash
 from datetime import datetime, timedelta, timezone
 import jwt
-from config import settings
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from typing import Annotated
-from database import get_db
-import models
+
+from app.config import settings
+from app.database import get_db
+from app import models
 
 password_hash = PasswordHash.recommended()
 
@@ -22,8 +23,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
-
-    # 1. Set the ticket's expiration time (defaulting to 30 minutes from now)
 
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -41,7 +40,6 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     return encoded_jwt
 
 def verify_access_token(token: str) -> int | None:
-
     try:
         payload = jwt.decode(
             token,
@@ -54,7 +52,7 @@ def verify_access_token(token: str) -> int | None:
             return None
         return int(user_id)
 
-    except ( jwt.InvalidTokenError, ValueError):
+    except (jwt.InvalidTokenError, ValueError):
         return None
 
 def get_current_user(
@@ -78,21 +76,17 @@ def get_current_user(
     
     return user
 
-
 def get_current_user_from_cookie(
     request: Request, 
     db: Annotated[Session, Depends(get_db)]
 ) -> models.User:
     
-    # 1. Grab the cookie
     token_str = request.cookies.get("access_token")
     if not token_str or not token_str.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not logged in")
     
-    # 2. Chop off "Bearer " to get just the token
     token = token_str.split(" ")[1]
     
-    # 3. Verify it (using the logic you already wrote!)
     user_id = verify_access_token(token)
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
@@ -108,15 +102,12 @@ def get_optional_current_user(
     db: Annotated[Session, Depends(get_db)]
 ) -> models.User:
     
-    # 1. Grab the cookie
     token_str = request.cookies.get("access_token")
     if not token_str or not token_str.startswith("Bearer "):
         return None
     
-    # 2. Chop off "Bearer " to get just the token
     token = token_str.split(" ")[1]
     
-    # 3. Verify it (using the logic you already wrote!)
     user_id = verify_access_token(token)
     if not user_id:
         return None
@@ -129,12 +120,7 @@ def get_optional_current_user(
 
 def get_admin_user(current_user: Annotated[models.User, Depends(get_current_user_from_cookie)]):
 
-    if current_user.is_admin == False:
+    if not current_user.is_admin:
         raise HTTPException(status_code=403, detail="not an admin")
     
     return current_user
-
-
-    
-
-

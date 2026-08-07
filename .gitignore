@@ -3,3 +3,7 @@ __pycache__/
 *.db
 .env
 .DS_Store
+.agents/
+.pytest_cache/
+media/posters/*
+!media/posters/.gitkeep

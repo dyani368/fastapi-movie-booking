@@ -8,12 +8,13 @@ A full-stack movie booking system built with FastAPI, featuring role-based JWT A
 * **Security:** JWT authentication using HTTPOnly cookies to help protect authentication tokens from client-side JavaScript access. 
 * **Data Validation:** Form inputs are strictly validated using Pydantic schemas.
 * **Clean UI:** Server-rendered HTML utilizing Jinja2 templates and Bootstrap.
-* **Database:** Relational SQLite database modeled with SQLAlchemy and cascading deletes.
+* **Database:** Relational PostgreSQL database (Neon) modeled with SQLAlchemy and cascading deletes.
 
 ## Tech Stack
 * Python
 * FastAPI
-* SQLAlchemy & SQLite
+* SQLAlchemy & PostgreSQL (Neon)
+* Alembic (migrations)
 * Jinja2
 * Bootstrap
 
@@ -60,7 +61,7 @@ SQLAlchemy commits transaction to PostgreSQL
 python -m venv venv
 venv\Scripts\activate
 ```
-2. Create a `.env` file and add your `DATABASE_URL` and `SECRET_KEY`.
+2. Create a `.env` file (see `.env.example` for required variables).
 3. Install the required dependencies:
 ```bash
 pip install -r requirements.txt
@@ -87,19 +88,18 @@ This application is deployed on a Linux VPS using a traditional reverse-proxy ar
 
 This application is containerized with Docker and can run locally against a managed PostgreSQL database such as Neon.
 
-Docker: Packages the FastAPI app, Python runtime, and dependencies into a portable container.
+* **Docker:** Packages the FastAPI app, Python runtime, and dependencies into a portable container.
+* **PostgreSQL (Neon):** Managed cloud database used as the production database.
+* **Alembic:** Handles schema migrations instead of relying on `create_all`, which cannot safely alter existing tables.
+* **FastAPI Middleware:** Adds application-level security headers to HTTP responses.
 
-PostgreSQL (Neon): Managed cloud database used as the production database.
-
-Alembic: Handles schema migrations instead of relying on create_all, which cannot safely alter existing tables.
-
-FastAPI Middleware: Adds application-level security headers to HTTP responses.
-
-Build the Docker Image:
-
+```bash
+# Build the Docker Image
 docker build -t fastapi-movie-booking .
-Run the Container Locally:
+
+# Run the Container Locally
 docker run -p 8080:8080 --env-file .env fastapi-movie-booking
+```
 
 * **Cloud Run Deployment Target:**
 The app is designed to be deployable to Google Cloud Run using the Dockerfile, but deployment requires an active Google Cloud billing account.

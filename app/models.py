@@ -3,7 +3,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import ForeignKey
 
-from database import Base
+from app.database import Base
 
 class Movie(Base):
     __tablename__ = "movies" 
@@ -48,5 +48,3 @@ class Booking(Base):
     # Load Python objects in memory:
     user : Mapped[User] = relationship(back_populates="bookings")
     movie : Mapped[Movie] = relationship(back_populates="bookings")
-    
-

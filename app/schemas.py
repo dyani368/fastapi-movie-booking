@@ -65,5 +65,3 @@ class BookingResponse(BookingBase):
     
     user: UserPublic
     movie : MovieResponse
-
-

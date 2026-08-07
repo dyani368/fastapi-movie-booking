@@ -10,27 +10,33 @@ from typing import Annotated
 from sqlalchemy import select, func, text
 from sqlalchemy.orm import Session 
 
-from schemas import UserCreate
+from app.schemas import UserCreate
+from app import models
+from app.database import Base, engine, get_db
+from app.routers import movies, users, bookings
+from app.auth import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    get_current_user,
+    get_current_user_from_cookie,
+    get_admin_user,
+    get_optional_current_user,
+)
 
-import models
-from database import Base, engine, get_db
-
-from routers import movies, users, bookings
-
-from auth import hash_password, verify_password, create_access_token, get_current_user, get_current_user_from_cookie, get_admin_user, get_optional_current_user
-
-# Get the absolute path of the directory containing main.py
+# Get the directory of app/ and the parent project directory
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.dirname(BASE_DIR)
 
 app = FastAPI()
 app.include_router(movies.router, prefix="/api/movies", tags=["movies"])
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(bookings.router, prefix="/api/bookings", tags=["bookings"])
 
-app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
-app.mount("/media", StaticFiles(directory ="media"), name = "media")
+app.mount("/static", StaticFiles(directory=os.path.join(PROJECT_DIR, "static")), name="static")
+app.mount("/media", StaticFiles(directory=os.path.join(PROJECT_DIR, "media")), name="media")
 
-templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
+templates = Jinja2Templates(directory=os.path.join(PROJECT_DIR, "templates"))
 
 @app.get("/health")
 def health(db: Annotated[Session, Depends(get_db)]):
@@ -39,77 +45,68 @@ def health(db: Annotated[Session, Depends(get_db)]):
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail = "Database unavailable"
+            detail="Database unavailable"
         ) from exc
     
-    return {"status" : "healthy"}
+    return {"status": "healthy"}
 
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
-
     response = await call_next(request)
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Strict-Transport-Security"] = "max-age=31536000;includeSubDomains"
-
     return response
 
-@app.get("/", include_in_schema = False)
+@app.get("/", include_in_schema=False)
 def root(
     request: Request,
-     db: Annotated[Session, Depends(get_db)],
-      current_user: Annotated[models.User | None, Depends(get_optional_current_user)],
-      page: int = 1):
-
-    skip = (page-1) * 3
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User | None, Depends(get_optional_current_user)],
+    page: int = 1,
+):
+    skip = (page - 1) * 3
     result = db.execute(select(models.Movie).offset(skip).limit(3))
-
     movie_list = result.scalars().all()
-
     total_movies = db.execute(select(func.count(models.Movie.id))).scalar()
+    total_pages = (total_movies + 2) // 3
 
-    total_pages = (total_movies + 2)//3
-    return templates.TemplateResponse(request,
-                "home.html",
-                 {
-                    "movies": movie_list,
-                     "title": "Home",
-                     "current_user": current_user,
-                     "page": page,
-                     "total_pages": total_pages
-                     })
+    return templates.TemplateResponse(
+        request,
+        "home.html",
+        {
+            "movies": movie_list,
+            "title": "Home",
+            "current_user": current_user,
+            "page": page,
+            "total_pages": total_pages,
+        },
+    )
 
-@app.get("/movies/new", include_in_schema = False)
+@app.get("/movies/new", include_in_schema=False)
 def create_movie_form(request: Request):
-    return templates.TemplateResponse(request, "create_movie.html", {"title":"Add Movie"})
+    return templates.TemplateResponse(request, "create_movie.html", {"title": "Add Movie"})
     
-@app.post("/movies/new", include_in_schema = False)
+@app.post("/movies/new", include_in_schema=False)
 def create_movie_html(
     title: Annotated[str, Form()],
     director: Annotated[str, Form()],
     seats_available: Annotated[int, Form()],
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
 ):
     new_movie = models.Movie(title=title, director=director, seats_available=seats_available)
-
     db.add(new_movie)
     db.commit()
     db.refresh(new_movie)
-
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
-@app.get("/movies/{movie_id}", include_in_schema = False)
-def get_movie(request: Request, movie_id : int, db: Annotated[Session, Depends(get_db)]):
-
+@app.get("/movies/{movie_id}", include_in_schema=False)
+def get_movie(request: Request, movie_id: int, db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Movie).where(models.Movie.id == movie_id))
-
     movie = result.scalars().first()
-
     if movie:
-        return templates.TemplateResponse(request,"movie.html", {"movie": movie, "title": movie.title})
-    
+        return templates.TemplateResponse(request, "movie.html", {"movie": movie, "title": movie.title})
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="movie not found")
-
 
 @app.get("/register", include_in_schema=False)
 def get_register_form(request: Request):
@@ -118,81 +115,70 @@ def get_register_form(request: Request):
 def user_form_translator(
     username: Annotated[str, Form()],
     email: Annotated[str, Form()],
-    password: Annotated[str, Form()]
+    password: Annotated[str, Form()],
 ) -> UserCreate:
     return UserCreate(username=username, email=email, password=password)
 
 @app.post("/register", include_in_schema=False)
 def register_html(
     user_data: Annotated[UserCreate, Depends(user_form_translator)],
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
 ):
+    result1 = db.execute(select(models.User).where(models.User.username == user_data.username))
+    if result1.scalars().first():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already registered")
+        
+    result2 = db.execute(select(models.User).where(models.User.email == user_data.email))
+    if result2.scalars().first():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="email already registered")
 
-   result1 = db.execute(select(models.User).where(models.User.username==user_data.username))
-   if result1.scalars().first():
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already registered")
-    
-   result2 = db.execute(select(models.User).where(models.User.email==user_data.email))
-   if result2.scalars().first():
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="email already registered")
+    new_user = models.User(username=user_data.username, email=user_data.email, hashed_password=hash_password(user_data.password))
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
 
-   new_user = models.User(username=user_data.username, email=user_data.email, hashed_password=hash_password(user_data.password))
-
-   db.add(new_user)
-   db.commit()
-   db.refresh(new_user)
-
-   return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
 @app.get("/login", include_in_schema=False)
 def get_login_form(request: Request):
-    return templates.TemplateResponse(request, "login.html", {"title" : "Login"})
+    return templates.TemplateResponse(request, "login.html", {"title": "Login"})
 
 @app.post("/login", include_in_schema=False)
 def login_html(
     username: Annotated[str, Form()],
     password: Annotated[str, Form()],
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
 ):
-    user = db.execute(select(models.User).where(models.User.username==username)).scalars().first()
+    user = db.execute(select(models.User).where(models.User.username == username)).scalars().first()
 
     if not user or not verify_password(password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
             detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"}  # Standard requirement for 401 token responses
+            headers={"WWW-Authenticate": "Bearer"},
         )
     
     access_token = create_access_token(data={"sub": str(user.id)})
-
     response = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
-
     response.set_cookie(
         key="access_token",
         value=f"Bearer {access_token}",
-        httponly=True
+        httponly=True,
     )
-
     return response
-    
+
 @app.post("/logout", include_in_schema=False)
 def logout():
-
-     response = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
-
-     response.delete_cookie(key="access_token")
-
-     return response
-
+    response = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+    response.delete_cookie(key="access_token")
+    return response
 
 @app.get("/movies/{movie_id}/edit", include_in_schema=False)
 def get_movie_form(request: Request, movie_id: int, db: Annotated[Session, Depends(get_db)]):
     movie = db.execute(select(models.Movie).where(models.Movie.id == movie_id)).scalars().first()
-
     if not movie:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="movie not found")
-    
-    return templates.TemplateResponse(request,"edit_movie.html", {"movie":movie})
+    return templates.TemplateResponse(request, "edit_movie.html", {"movie": movie})
 
 @app.post("/movies/{movie_id}/edit", include_in_schema=False)
 def edit_movie_html(
@@ -201,25 +187,22 @@ def edit_movie_html(
     title: Annotated[str, Form()],
     director: Annotated[str, Form()],
     seats_available: Annotated[int, Form()],
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
 ):
-    
-    movie = db.execute(select(models.Movie).where(models.Movie.id==movie_id)).scalars().first()
+    movie = db.execute(select(models.Movie).where(models.Movie.id == movie_id)).scalars().first()
     if not movie:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movie not found")
     
     movie.title = title
     movie.director = director
     movie.seats_available = seats_available
-
     db.commit()
 
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
     
 @app.post("/movies/{movie_id}/delete", include_in_schema=False)
 def delete_movie(current_user: Annotated[models.User, Depends(get_admin_user)], movie_id: int, db: Annotated[Session, Depends(get_db)]):
-    movie=db.execute(select(models.Movie).where(models.Movie.id==movie_id)).scalars().first()
-
+    movie = db.execute(select(models.Movie).where(models.Movie.id == movie_id)).scalars().first()
     if not movie:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movie not found")
     
@@ -234,11 +217,10 @@ def book_movie_html(
     show_time: Annotated[str, Form()],
     seats_booked: Annotated[int, Form()],
     current_user: Annotated[models.User, Depends(get_current_user_from_cookie)],
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
 ):
-
-    if current_user.is_admin == True:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail = "admins not allowed to book")
+    if current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="admins not allowed to book")
 
     movie = db.execute(select(models.Movie).where(models.Movie.id == movie_id)).scalars().first()
     if not movie:
@@ -249,22 +231,19 @@ def book_movie_html(
     
     movie.seats_available -= seats_booked
 
-    booking = models.Booking(user_id = current_user.id, movie_id = movie.id, seats_booked = seats_booked, show_time = show_time)
-
+    booking = models.Booking(user_id=current_user.id, movie_id=movie.id, seats_booked=seats_booked, show_time=show_time)
     db.add(booking)
     db.commit()
     db.refresh(booking)
 
     return RedirectResponse(url=f"/movies/{movie_id}", status_code=status.HTTP_303_SEE_OTHER)
 
-@app.get("/my-bookings", include_in_schema= False)
-def my_bookings_html(request, current_user: Annotated[models.User, Depends(get_current_user_from_cookie)]):
+@app.get("/my-bookings", include_in_schema=False)
+def my_bookings_html(request: Request, current_user: Annotated[models.User, Depends(get_current_user_from_cookie)]):
     return templates.TemplateResponse(request, "my_bookings.html", {"bookings": current_user.bookings})
-
 
 @app.exception_handler(StarletteHTTPException)
 def general_http_exception_handler(request: Request, exception: StarletteHTTPException):
-
     message = (
         exception.detail
         if exception.detail

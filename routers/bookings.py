@@ -6,19 +6,22 @@ from typing import Annotated
 import models
 from database import get_db
 from schemas import  BookingCreate, BookingResponse
+from auth import get_current_user
 
 router = APIRouter()
 
 @router.get("", response_model = list[BookingResponse])
-def get_bookings_api(db: Annotated[Session, Depends(get_db)]):
-
-    result=db.execute(select(models.Booking))
+def get_bookings_api(current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+    if current_user.is_admin:
+        result = db.execute(select(models.Booking))
+    else:
+        result = db.execute(select(models.Booking).where(models.Booking.user_id == current_user.id))
 
     return result.scalars().all()
 
 
 @router.get("/{booking_id}", response_model=BookingResponse)
-def get_booking_api(booking_id: int, db: Annotated[Session, Depends(get_db)]):
+def get_booking_api(booking_id: int, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
     
     result = db.execute(select(models.Booking).where(models.Booking.id == booking_id))
 
@@ -27,6 +30,9 @@ def get_booking_api(booking_id: int, db: Annotated[Session, Depends(get_db)]):
     if not booking:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="booking not found")
 
+    if booking.user_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to view this booking")
+
     return booking
 
 @router.post(
@@ -34,7 +40,13 @@ def get_booking_api(booking_id: int, db: Annotated[Session, Depends(get_db)]):
     response_model = BookingResponse,
     status_code = status.HTTP_201_CREATED
 )
-def create_booking(booking: BookingCreate, db: Annotated[Session, Depends(get_db)]):
+def create_booking(booking: BookingCreate, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+
+    if current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admins cannot create bookings")
+
+    if booking.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot create booking for another user")
 
     result1 = db.execute(select(models.User).where(models.User.id==booking.user_id))
     if not result1.scalars().first():
@@ -60,13 +72,16 @@ def create_booking(booking: BookingCreate, db: Annotated[Session, Depends(get_db
 
     
 @router.delete("/{booking_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_booking_api(booking_id: int, db: Annotated[Session, Depends(get_db)]):
+def delete_booking_api(booking_id: int, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
 
     result=db.execute(select(models.Booking).where(models.Booking.id==booking_id))
     booking = result.scalars().first()
 
     if not booking:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
+
+    if booking.user_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this booking")
     
     movie = booking.movie
     movie.seats_available += booking.seats_booked

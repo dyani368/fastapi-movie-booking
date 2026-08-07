@@ -14,7 +14,9 @@ from auth import hash_password, verify_password, create_access_token, get_curren
 router = APIRouter()
 
 @router.get("", response_model=list[UserPublic])
-def get_users_api(db: Annotated[Session, Depends(get_db)]):
+def get_users_api(current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
     result = db.execute(select(models.User))
 
@@ -82,7 +84,9 @@ def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Annota
 
 
 @router.patch("/{user_id}", response_model=UserPrivate)
-def update_user_api(user_id: int, user_data: UserUpdate, db: Annotated[Session, Depends(get_db)]):
+def update_user_api(user_id: int, user_data: UserUpdate, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+    if current_user.id != user_id and not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this user")
 
     user = db.execute(select(models.User).where(models.User.id==user_id)).scalars().first()
     if not user:
@@ -103,7 +107,9 @@ def update_user_api(user_id: int, user_data: UserUpdate, db: Annotated[Session, 
     return user
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user_api(user_id: int, db: Annotated[Session, Depends(get_db)]):
+def delete_user_api(user_id: int, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+    if current_user.id != user_id and not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this user")
 
     user=db.execute(select(models.User).where(user_id==models.User.id)).scalars().first()
 
