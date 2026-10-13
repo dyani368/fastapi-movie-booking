@@ -20,6 +20,14 @@ The web UI is at `/`; the interactive API documentation is at `/docs`; `/health`
 
 Booking requests validate positive seat counts and lock the movie row while checking and updating inventory. This prevents concurrent overselling on PostgreSQL. Cookie-authenticated form submissions use a CSRF token; authentication cookies are HTTP-only and use `SameSite=Lax`.
 
+## Booking SMS (Plivo)
+
+Set `PLIVO_AUTH_ID`, `PLIVO_AUTH_TOKEN`, and `PLIVO_SOURCE_NUMBER` in the ignored `.env` file. Add an optional user phone number in E.164 format (for example `+14155552671`). After a booking commits, the app sends a best-effort confirmation; an SMS provider failure does not cancel the booking. Delivery state is available to the booking owner or an admin at `GET /api/bookings/{id}/sms-status`.
+
+For delivery callbacks, set `PLIVO_STATUS_CALLBACK_URL` to the exact public HTTPS URL for `/webhooks/plivo/sms` (including any trailing slash). Expose the local app through a secure tunnel while testing, and configure that same URL in the app. The webhook validates Plivo's V2 signature, stores provider status updates, and acknowledges duplicate/stale callbacks. Do not commit `.env` or share the Auth Token. A Plivo trial may require the destination number to be verified in the Plivo console.
+
+Run `python -m pytest` to exercise the sender and callback logic without sending real SMS. A live send requires active Plivo credentials and an SMS-capable source number.
+
 ## Docker
 
 Build and run with Docker using the `.env` file. The image listens on port 8080. Run `alembic upgrade head` as a release step before starting a new deployment; the app does not mutate the schema at startup.

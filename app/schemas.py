@@ -25,6 +25,7 @@ class MovieUpdate(BaseModel):
 class UserBase(BaseModel):
     username : str = Field(min_length = 3, max_length = 15)
     email : EmailStr
+    phone_number: str | None = Field(default=None, pattern=r"^\+[1-9]\d{7,14}$")
 
 class UserCreate(UserBase):
     password : str = Field(min_length = 8)
@@ -37,10 +38,12 @@ class UserPublic(BaseModel):
 
 class UserPrivate(UserPublic):
     email: str
+    phone_number: str | None = None
 
 class UserUpdate(BaseModel):
     username: str|None = Field(default=None, min_length=1, max_length=15)
     email: str|None = Field(default=None, min_length=1)
+    phone_number: str | None = Field(default=None, pattern=r"^\+[1-9]\d{7,14}$")
     password: str|None = Field(default=None,min_length=8)
 
 class Token(BaseModel):

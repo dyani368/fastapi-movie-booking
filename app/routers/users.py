@@ -58,7 +58,7 @@ def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
     if result2.scalars().first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="email already registered")
 
-    new_user = models.User(username=user.username, email=user.email, hashed_password=hash_password(user.password))
+    new_user = models.User(username=user.username, email=user.email, phone_number=user.phone_number, hashed_password=hash_password(user.password))
 
     db.add(new_user)
     db.commit()

@@ -18,7 +18,8 @@ from app.schemas import UserCreate, SHOW_TIMES
 from app import models
 from app.database import get_db
 from app.config import settings
-from app.routers import movies, users, bookings
+from app.routers import movies, users, bookings, webhooks
+from app.services.sms import send_booking_confirmation
 from app.auth import (
     hash_password,
     verify_password,
@@ -35,6 +36,7 @@ app = FastAPI()
 app.include_router(movies.router, prefix="/api/movies", tags=["movies"])
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(bookings.router, prefix="/api/bookings", tags=["bookings"])
+app.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
 
 app.mount("/static", StaticFiles(directory=os.path.join(PROJECT_DIR, "static")), name="static")
 app.mount("/media", StaticFiles(directory=os.path.join(PROJECT_DIR, "media")), name="media")
@@ -151,8 +153,9 @@ def user_form_translator(
     username: Annotated[str, Form()],
     email: Annotated[str, Form()],
     password: Annotated[str, Form()],
+    phone_number: Annotated[str | None, Form()] = None,
 ) -> UserCreate:
-    return UserCreate(username=username, email=email, password=password)
+    return UserCreate(username=username, email=email, password=password, phone_number=phone_number or None)
 
 @app.post("/register", include_in_schema=False)
 def register_html(
@@ -168,7 +171,7 @@ def register_html(
     if result2.scalars().first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="email already registered")
 
-    new_user = models.User(username=user_data.username, email=user_data.email, hashed_password=hash_password(user_data.password))
+    new_user = models.User(username=user_data.username, email=user_data.email, phone_number=user_data.phone_number, hashed_password=hash_password(user_data.password))
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
@@ -281,6 +284,8 @@ def book_movie_html(
     db.add(booking)
     db.commit()
     db.refresh(booking)
+
+    send_booking_confirmation(db, booking, current_user, movie)
 
     return RedirectResponse(url=f"/movies/{movie_id}", status_code=status.HTTP_303_SEE_OTHER)
 

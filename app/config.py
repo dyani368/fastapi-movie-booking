@@ -8,6 +8,10 @@ class Settings(BaseSettings):
     secure_cookies: bool = False
 
     database_url: str
+    plivo_auth_id: str | None = None
+    plivo_auth_token: SecretStr | None = None
+    plivo_source_number: str | None = None
+    plivo_status_callback_url: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     

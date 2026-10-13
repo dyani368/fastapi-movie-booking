@@ -7,6 +7,7 @@ from app import models
 from app.database import get_db
 from app.schemas import BookingCreate, BookingResponse
 from app.auth import get_current_user
+from app.services.sms import send_booking_confirmation
 
 router = APIRouter()
 
@@ -59,8 +60,22 @@ def create_booking(booking: BookingCreate, current_user: Annotated[models.User, 
     db.add(new_booking)
     db.commit()
     db.refresh(new_booking)
+
+    send_booking_confirmation(db, new_booking, current_user, movie)
     
     return new_booking
+
+@router.get("/{booking_id}/sms-status")
+def get_sms_status(booking_id: int, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+    booking = db.get(models.Booking, booking_id)
+    if not booking:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="booking not found")
+    if booking.user_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to view this booking")
+    delivery = db.execute(select(models.SmsDelivery).where(models.SmsDelivery.booking_id == booking_id)).scalars().first()
+    if not delivery:
+        return {"booking_id": booking_id, "status": "not_sent"}
+    return {"booking_id": booking_id, "status": delivery.status, "error_code": delivery.error_code, "updated_at": delivery.updated_at}
 
 @router.delete("/{booking_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_booking_api(booking_id: int, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
