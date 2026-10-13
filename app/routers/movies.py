@@ -52,11 +52,16 @@ def update_movie_api(movie_id: int, movie_data: MovieUpdate, current_user: Annot
     if not current_user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
-    movie = db.execute(select(models.Movie).where(models.Movie.id==movie_id)).scalars().first()
+    movie = db.execute(select(models.Movie).where(models.Movie.id==movie_id).with_for_update()).scalars().first()
     if not movie:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movie not found")
     
-    update_data=movie_data.model_dump(exclude_unset=True)
+    update_data=movie_data.model_dump(exclude_unset=True, exclude_none=True)
+
+    if "seats_available" in update_data:
+        has_bookings = db.execute(select(models.Booking.id).where(models.Booking.movie_id == movie.id).limit(1)).first()
+        if has_bookings:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Seat inventory cannot be changed after a booking exists")
 
     for key,value in update_data.items():
         setattr(movie,key,value)

@@ -111,7 +111,7 @@ def get_optional_current_user(
     user_id = verify_access_token(token)
     if not user_id:
         return None
-        
+       
     user = db.execute(select(models.User).where(models.User.id == user_id)).scalars().first()
     if not user:
         return None

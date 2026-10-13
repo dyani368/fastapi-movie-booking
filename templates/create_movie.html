@@ -5,6 +5,7 @@
 
     <form onsubmit="this.querySelector('button[type=submit]').disabled = true;"
         action="{{ url_for('create_movie_html') }}" method="post">
+        <input type="hidden" name="_csrf" value="{{ request.state.csrf_token }}">
         <!-- Movie Title -->
         <div class="mb-3">
             <label for="title" class="form-label">Movie Title</label>

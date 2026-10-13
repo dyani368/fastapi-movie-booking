@@ -19,11 +19,11 @@
             </p>
 
             <!-- Movie actions (Edit / Delete) -->
-            <div class="post-actions mt-4 pt-3 border-top">
+            {% if current_user and current_user.is_admin %}<div class="post-actions mt-4 pt-3 border-top">
                 <a class="btn btn-outline-secondary me-1" href="{{ url_for('get_movie_form', movie_id=movie.id) }}">Edit Movie</a>
                 <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
                     data-bs-target="#deleteModal">Delete Movie</button>
-            </div>
+            </div>{% endif %}
         </div>
     </div>
 </article>
@@ -36,8 +36,8 @@
                 <h5 class="modal-title" id="deleteModalLabel">Delete Movie?</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <!-- TODO: <form action="#" method="post"> -->
             <form action="{{ url_for('delete_movie', movie_id=movie.id) }}" method="post">
+                <input type="hidden" name="_csrf" value="{{ request.state.csrf_token }}">
                 <div class="modal-body">Are you sure you want to delete this movie? This action cannot be undone.</div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -49,9 +49,10 @@
 </div>
 
 <!-- Book Tickets Form -->
-<div class="mt-4 p-4 border rounded bg-light">
+{% if current_user and not current_user.is_admin %}<div class="mt-4 p-4 border rounded bg-light">
     <h3 class="text-primary mb-3">Book Tickets</h3>
     <form action="{{ url_for('book_movie_html', movie_id=movie.id) }}" method="post" class="row g-3 align-items-end">
+        <input type="hidden" name="_csrf" value="{{ request.state.csrf_token }}">
         <div class="col-md-4">
             <label for="seats_booked" class="form-label">Number of Seats</label>
             <input type="number" class="form-control" id="seats_booked" name="seats_booked" required min="1" max="{{ movie.seats_available }}">
@@ -61,10 +62,7 @@
             <!-- A nice dropdown of times instead of a generic text box -->
             <select class="form-select" id="show_time" name="show_time" required>
                 <option value="" selected disabled>Select a time...</option>
-                <option value="12:00 PM">12:00 PM</option>
-                <option value="3:30 PM">3:30 PM</option>
-                <option value="7:00 PM">7:00 PM</option>
-                <option value="10:15 PM">10:15 PM</option>
+                {% for show_time in show_times %}<option value="{{ show_time }}">{{ show_time }}</option>{% endfor %}
             </select>
         </div>
         <div class="col-md-3">
@@ -72,16 +70,16 @@
         </div>
     </form>
 </div>
+{% elif not current_user %}<p><a href="{{ url_for('get_login_form') }}">Log in</a> to book tickets.</p>{% endif %}
 
-<div class="mt-5">
+{% if visible_bookings %}<div class="mt-5">
     <h3 class="text-primary mb-3">Current Bookings</h3>
-    {% if movie.bookings %}
+    {% if visible_bookings %}
     <ul class="list-group">
-        {% for booking in movie.bookings %}
+        {% for booking in visible_bookings %}
         <li class="list-group-item d-flex justify-content-between align-items-center">
             <div>
                 <strong>{{ booking.user.username }}</strong>
-                <span class="text-muted">({{ booking.user.email }})</span>
             </div>
             <span class="badge bg-primary rounded-pill">
                 {{ booking.seats_booked }} seats at {{ booking.show_time }}
@@ -93,4 +91,5 @@
     <p class="text-muted">No bookings made for this movie yet.</p>
     {% endif %}
 </div>
+{% endif %}
 {% endblock content %}

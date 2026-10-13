@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import ForeignKey
+from sqlalchemy import CheckConstraint, ForeignKey
 
 from app.database import Base
 
 class Movie(Base):
     __tablename__ = "movies" 
+    __table_args__ = (CheckConstraint("seats_available >= 0", name="ck_movies_seats_nonnegative"),)
 
     id : Mapped[int] = mapped_column(primary_key = True, index = True)
     title: Mapped[str] = mapped_column(nullable = False)
@@ -36,6 +37,7 @@ class User(Base):
 
 class Booking(Base):
     __tablename__ = "booking"
+    __table_args__ = (CheckConstraint("seats_booked > 0", name="ck_booking_seats_positive"),)
 
     id : Mapped[int] = mapped_column(primary_key = True, index = True)
     seats_booked : Mapped[int] = mapped_column(nullable=False)

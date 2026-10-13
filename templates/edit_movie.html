@@ -4,6 +4,7 @@
     <h2 class="text-primary mb-4">Edit a Movie</h2>
 
     <form action="{{ url_for('edit_movie_html', movie_id=movie.id) }}" method="post">
+        <input type="hidden" name="_csrf" value="{{ request.state.csrf_token }}">
         <!-- Movie Title -->
         <div class="mb-3">
             <label for="title" class="form-label">Movie Title</label>
@@ -19,7 +20,7 @@
         <!-- Seats Available -->
         <div class="mb-3">
             <label for="seats_available" class="form-label">Seats Available</label>
-            <input type="number" class="form-control" id="seats_available" name="seats_available" required min="1" value="{{ movie.seats_available }}">
+            <input type="number" class="form-control" id="seats_available" name="seats_available" required min="0" value="{{ movie.seats_available }}">
         </div>
 
         <!-- Submit Button -->

@@ -1,117 +1,33 @@
-# FastAPI Movie Booking System 
+# Movie Booking
 
-A full-stack movie booking system built with FastAPI, featuring role-based JWT Authentication and a server-rendered Jinja2 frontend.
+A server-rendered movie catalog and booking app with a JSON API, FastAPI, SQLAlchemy, PostgreSQL, Alembic, and Jinja templates. Users can register, sign in, browse movies, and reserve seats; admins manage the catalog.
 
-## Features
-* **Role-Based Access Control:** Only admins can add, edit, or delete movies. Regular users can browse and book tickets.
-* **Booking Logic:** Users select the number of seats and showtime, and backend inventory math validates the transaction.
-* **Security:** JWT authentication using HTTPOnly cookies to help protect authentication tokens from client-side JavaScript access. 
-* **Data Validation:** Form inputs are strictly validated using Pydantic schemas.
-* **Clean UI:** Server-rendered HTML utilizing Jinja2 templates and Bootstrap.
-* **Database:** Relational PostgreSQL database (Neon) modeled with SQLAlchemy and cascading deletes.
+## Run locally
 
-## Tech Stack
-* Python
-* FastAPI
-* SQLAlchemy & PostgreSQL (Neon)
-* Alembic (migrations)
-* Jinja2
-* Bootstrap
+1. Create a PostgreSQL database and copy `.env.example` to `.env`. Set `DATABASE_URL` and a long random `SECRET_KEY`. Set `SECURE_COOKIES=true` when serving over HTTPS.
+2. Install dependencies with `python -m pip install -r requirements-dev.txt`.
+3. Create the database schema with `alembic upgrade head`.
+4. Start the app with `fastapi dev app/main.py`.
 
-## Architecture
+The web UI is at `/`; the interactive API documentation is at `/docs`; `/health` checks database connectivity. The first registered account is a regular user. Set `is_admin` for a trusted account directly in the database to grant catalog access; public registration never accepts a role.
 
-```text
-Client
-  |
-  | HTTP
-  v
-FastAPI app
-  |
-  |-- Jinja2 templates render server-side HTML
-  |-- JWT auth with HTTPOnly cookies protects user sessions
-  |-- Role-based access controls admin-only movie management
-  |
-  v
-SQLAlchemy ORM
-  |
-  v
-PostgreSQL / Neon
-```
+## API outline
 
-### Booking Flow
-User selects movie, showtime, and seats
-  |
-  v
-FastAPI validates form input with Pydantic
-  |
-  v
-Backend checks available seat inventory
-  |
-  |-- Enough seats: create booking and reduce available seats
-  |-- Not enough seats: reject booking request
-  |
-  v
-SQLAlchemy commits transaction to PostgreSQL
+- `GET /api/movies` and `GET /api/movies/{id}` are public.
+- `POST /api/movies` and `PATCH` or `DELETE /api/movies/{id}` require an admin bearer token.
+- `POST /api/users` creates an account; `POST /api/users/token` returns a bearer token.
+- `GET /api/bookings` returns the signed-in user's bookings (admins can review all); `POST /api/bookings` creates a booking for the signed-in user; `DELETE /api/bookings/{id}` cancels an owned booking or an admin cancellation.
 
+Booking requests validate positive seat counts and lock the movie row while checking and updating inventory. This prevents concurrent overselling on PostgreSQL. Cookie-authenticated form submissions use a CSRF token; authentication cookies are HTTP-only and use `SameSite=Lax`.
 
-## Installation
+## Docker
 
-1. Create and activate a virtual environment:
-```bash
-python -m venv venv
-venv\Scripts\activate
-```
-2. Create a `.env` file (see `.env.example` for required variables).
-3. Install the required dependencies:
-```bash
-pip install -r requirements.txt
-```
-4. Run database migrations:
-```bash
-alembic upgrade head
-```
-5. Start the FastAPI development server:
-```bash
-fastapi dev main.py
-```
+Build and run with Docker using the `.env` file. The image listens on port 8080. Run `alembic upgrade head` as a release step before starting a new deployment; the app does not mutate the schema at startup.
 
-## Production Deployment (Linux VPS)
+## Current scope
 
-This application is deployed on a Linux VPS using a traditional reverse-proxy architecture:
+Inventory is shared across a movie's listed showtimes. A production ticketing system should model dated shows and allocate capacity per show (or per seat), then add expiring holds and payment confirmation. This app does not process payments.
 
-* **PostgreSQL (Neon):** Managed cloud database.
-* **Alembic:** Used for schema migrations (solves the problem of `create_all` not being able to alter existing tables).
-* **Gunicorn & Systemd:** Gunicorn acts as a process manager with Uvicorn workers. Systemd runs Gunicorn in the background 24/7 and restarts it automatically if it crashes or if the server reboots.
-* **Nginx:** Acts as a reverse proxy. It listens on port 80 (HTTP) and forwards internet traffic to the local Gunicorn port (8000). It acts as a security buffer and load balancer so the FastAPI app isn't directly exposed to the raw internet.
+## Development
 
-## Dockerized Local Deployment
-
-This application is containerized with Docker and can run locally against a managed PostgreSQL database such as Neon.
-
-* **Docker:** Packages the FastAPI app, Python runtime, and dependencies into a portable container.
-* **PostgreSQL (Neon):** Managed cloud database used as the production database.
-* **Alembic:** Handles schema migrations instead of relying on `create_all`, which cannot safely alter existing tables.
-* **FastAPI Middleware:** Adds application-level security headers to HTTP responses.
-
-```bash
-# Build the Docker Image
-docker build -t fastapi-movie-booking .
-
-# Run the Container Locally
-docker run -p 8080:8080 --env-file .env fastapi-movie-booking
-```
-
-* **Cloud Run Deployment Target:**
-The app is designed to be deployable to Google Cloud Run using the Dockerfile, but deployment requires an active Google Cloud billing account.
-```bash
-# 1. Log into your Google account in the terminal
-gcloud auth login
-
-# 2. Tell the CLI which project you are targeting
-gcloud config set project <your-project-id>
-
-# 3. Deploy the source code! (Google will use your Dockerfile to build and host the app)
-gcloud run deploy fastapi-app --source . --region us-east1 --allow-unauthenticated
-```
-
-
+Run `python -m pytest` for the API and booking regression tests. Keep schema changes in Alembic migrations and test fresh database setup before deploying.

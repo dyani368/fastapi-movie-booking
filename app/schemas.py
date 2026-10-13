@@ -1,19 +1,20 @@
 from pydantic import BaseModel, ConfigDict, Field, EmailStr
-from datetime import datetime
+from typing import Literal
+
+SHOW_TIMES = ("12:00 PM", "3:30 PM", "7:00 PM", "10:15 PM")
 
 class MovieBase(BaseModel):
     title: str = Field(min_length =1, max_length = 20)
     director: str = Field(min_length = 1)
-    seats_available: int = Field(ge=1)
+    seats_available: int = Field(ge=0)
 
 class MovieCreate(MovieBase):
-    pass
+    seats_available: int = Field(gt=0)
 
 class MovieResponse(MovieBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    date_posted : str = Field(default_factory=lambda: datetime.now().strftime("%B %d, %Y"))
     poster_path: str
 
 class MovieUpdate(BaseModel):
@@ -50,10 +51,9 @@ class TokenData(BaseModel):
     id: int | None = None
 
 class BookingBase(BaseModel):
-    user_id : int 
     movie_id : int 
     seats_booked : int = Field(ge=1)
-    show_time : str
+    show_time: Literal["12:00 PM", "3:30 PM", "7:00 PM", "10:15 PM"]
 
 class BookingCreate(BookingBase):
     pass
@@ -62,6 +62,7 @@ class BookingResponse(BookingBase):
     model_config = ConfigDict(from_attributes=True)
 
     id : int
+    user_id: int
     
     user: UserPublic
     movie : MovieResponse

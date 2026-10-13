@@ -1,0 +1,37 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: movie_booking
+          POSTGRES_USER: movie_booking
+          POSTGRES_PASSWORD: movie_booking
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U movie_booking -d movie_booking"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://movie_booking:movie_booking@localhost:5432/movie_booking
+      MOVIE_BOOKING_TEST_DB_URL: postgresql://movie_booking:movie_booking@localhost:5432/movie_booking
+      SECRET_KEY: ci-only-secret-key-for-tests
+      SECURE_COOKIES: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -r requirements-dev.txt
+      - run: alembic upgrade head
+      - run: python -m pytest -q

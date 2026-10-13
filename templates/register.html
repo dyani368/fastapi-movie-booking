@@ -4,10 +4,11 @@
     <h2 class="text-primary mb-4 text-center">Register</h2>
 
     <form action="{{ url_for('register_html') }}" method="post">
+        <input type="hidden" name="_csrf" value="{{ request.state.csrf_token }}">
         <!-- Username -->
         <div class="mb-3">
             <label for="username" class="form-label">Username</label>
-            <input type="text" class="form-control" id="username" name="username" required minlength="3" maxlength="20">
+            <input type="text" class="form-control" id="username" name="username" required minlength="3" maxlength="15">
         </div>
 
         <!-- Email -->
@@ -19,7 +20,7 @@
         <!-- Password -->
         <div class="mb-3">
             <label for="password" class="form-label">Password</label>
-            <input type="password" class="form-control" id="password" name="password" required minlength="6">
+            <input type="password" class="form-control" id="password" name="password" required minlength="8">
         </div>
 
         <!-- Submit Button -->

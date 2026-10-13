@@ -44,24 +44,17 @@ def create_booking(booking: BookingCreate, current_user: Annotated[models.User, 
     if current_user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admins cannot create bookings")
 
-    if booking.user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot create booking for another user")
-
-    result1 = db.execute(select(models.User).where(models.User.id==booking.user_id))
-    if not result1.scalars().first():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    
-    result2 = db.execute(select(models.Movie).where(models.Movie.id==booking.movie_id))
+    result2 = db.execute(select(models.Movie).where(models.Movie.id==booking.movie_id).with_for_update())
     movie = result2.scalars().first()
     if not movie:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movie not found")
     
-    if movie.seats_available < booking.seats_booked:
+    if booking.seats_booked < 1 or movie.seats_available < booking.seats_booked:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="not enough seats available")
     
     movie.seats_available -= booking.seats_booked
 
-    new_booking = models.Booking(user_id=booking.user_id, movie_id=booking.movie_id, seats_booked=booking.seats_booked, show_time=booking.show_time)
+    new_booking = models.Booking(user_id=current_user.id, movie_id=booking.movie_id, seats_booked=booking.seats_booked, show_time=booking.show_time)
 
     db.add(new_booking)
     db.commit()
@@ -72,7 +65,7 @@ def create_booking(booking: BookingCreate, current_user: Annotated[models.User, 
 @router.delete("/{booking_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_booking_api(booking_id: int, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
 
-    result=db.execute(select(models.Booking).where(models.Booking.id==booking_id))
+    result=db.execute(select(models.Booking).where(models.Booking.id==booking_id).with_for_update())
     booking = result.scalars().first()
 
     if not booking:
@@ -81,7 +74,9 @@ def delete_booking_api(booking_id: int, current_user: Annotated[models.User, Dep
     if booking.user_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this booking")
     
-    movie = booking.movie
+    movie = db.execute(select(models.Movie).where(models.Movie.id == booking.movie_id).with_for_update()).scalars().first()
+    if movie is None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Movie no longer exists")
     movie.seats_available += booking.seats_booked
 
     db.delete(booking)

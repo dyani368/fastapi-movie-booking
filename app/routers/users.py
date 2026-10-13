@@ -9,6 +9,7 @@ from app.schemas import UserCreate, UserPublic, UserPrivate, UserUpdate, Token
 
 from fastapi.security import OAuth2PasswordRequestForm
 from app.auth import hash_password, verify_password, create_access_token, get_current_user
+from app.models import Booking, Movie
 
 router = APIRouter()
 
@@ -90,7 +91,7 @@ def update_user_api(user_id: int, user_data: UserUpdate, current_user: Annotated
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    update_data = user_data.model_dump(exclude_unset=True)
+    update_data = user_data.model_dump(exclude_unset=True, exclude_none=True)
 
     if "password" in update_data:
         password = update_data.pop("password")
@@ -114,5 +115,11 @@ def delete_user_api(user_id: int, current_user: Annotated[models.User, Depends(g
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
+    bookings = db.execute(select(Booking).where(Booking.user_id == user.id).with_for_update()).scalars().all()
+    for booking in bookings:
+        movie = db.execute(select(Movie).where(Movie.id == booking.movie_id).with_for_update()).scalars().first()
+        if movie:
+            movie.seats_available += booking.seats_booked
+        db.delete(booking)
     db.delete(user)
     db.commit()
