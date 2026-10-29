@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.staticfiles import StaticFiles
@@ -41,6 +41,11 @@ def health(db: Session = Depends(get_db)):
 @app.exception_handler(IntegrityError)
 def database_conflict_handler(request: Request, exception: IntegrityError):
     return JSONResponse(status_code=status.HTTP_409_CONFLICT, content={"detail": "The request conflicts with existing data"})
+
+
+@app.exception_handler(OperationalError)
+def database_unavailable_handler(request: Request, exception: OperationalError):
+    return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content={"detail": "Database connection is temporarily unavailable. Check Neon and retry."})
 
 
 @app.exception_handler(StarletteHTTPException)

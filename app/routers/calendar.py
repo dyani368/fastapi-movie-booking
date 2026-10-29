@@ -8,7 +8,7 @@ from urllib.parse import urlencode
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, selectinload
 
 from app import models
 from app.auth import get_current_user
@@ -115,7 +115,7 @@ async def access_token(db: Session, credential: models.CalendarCredential) -> st
     credential.access_token = _fernet().encrypt(token["access_token"].encode()).decode()
     credential.access_token_expires_at = now + timedelta(seconds=int(token.get("expires_in", 3600)))
     db.commit()
-    return credential.access_token
+    return token["access_token"]
 
 
 @router.get("/status")
@@ -127,7 +127,7 @@ def calendar_status(current_user: Annotated[models.User, Depends(get_current_use
 @router.post("/bookings/{booking_id}/event")
 async def add_booking_to_calendar(booking_id: int, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
     booking = db.execute(
-        select(models.Booking).options(joinedload(models.Booking.screening).joinedload(models.Screening.movie))
+        select(models.Booking).options(selectinload(models.Booking.screening).selectinload(models.Screening.movie))
         .where(models.Booking.id == booking_id, models.Booking.user_id == current_user.id).with_for_update()
     ).scalars().first()
     if not booking:

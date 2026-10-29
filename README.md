@@ -7,7 +7,7 @@ Cinebook is a small full-stack movie ticket booking demo. A React and TypeScript
 1. Create a PostgreSQL database and copy `.env.example` to `.env`. Set `DATABASE_URL` and a long random `SECRET_KEY`.
 2. Install Python packages with `python -m pip install -r requirements-dev.txt`.
 3. Apply migrations with `alembic upgrade head`.
-4. Add demo films and future screenings with `python scripts/seed_demo.py`.
+4. Add demo films and future screenings with `python -m scripts.seed_demo`.
 5. Start FastAPI with `fastapi dev app/main.py`.
 6. In another terminal, run `cd frontend`, `npm install`, and `npm run dev`.
 
@@ -23,7 +23,7 @@ All credentials are optional for browsing and running the API. The related featu
 
 Set `TMDB_API_KEY` in `.env`. Sign in as an admin, open **Manage**, search TMDB, import a movie, then publish a screening. TMDB calls stay on the backend; its key is not sent to the browser.
 
-Promote an existing local account from the project directory with `python scripts/promote_admin.py`. The script asks for the username and updates only that account.
+Promote an existing local account from the project directory with `python -m scripts.promote_admin`. The script asks for the username and updates only that account.
 
 ### Razorpay test checkout and webhook
 

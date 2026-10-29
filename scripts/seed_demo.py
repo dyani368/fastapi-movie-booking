@@ -1,7 +1,7 @@
 """Create a small demo catalog with dated bookable screenings."""
 
 from datetime import datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
+from datetime import timezone as fixed_timezone
 
 from sqlalchemy import select
 
@@ -29,7 +29,9 @@ def main() -> None:
             has_screenings = db.execute(select(models.Screening.id).where(models.Screening.movie_id == movie.id).limit(1)).first()
             if has_screenings:
                 continue
-            local_tz = ZoneInfo("Asia/Kolkata")
+            # India Standard Time is UTC+05:30; using a fixed offset avoids requiring
+            # an operating-system timezone database on Windows installations.
+            local_tz = fixed_timezone(timedelta(hours=5, minutes=30))
             day = (datetime.now(local_tz) + timedelta(days=1)).date()
             for hour, price in ((11, 25000), (15, 30000), (19, 35000)):
                 starts = datetime(day.year, day.month, day.day, hour, 0, tzinfo=local_tz).astimezone(timezone.utc)

@@ -1,12 +1,15 @@
 import hashlib
 import hmac
 import json
+import logging
 from datetime import datetime, timedelta, timezone
 
 import httpx
 from fastapi import HTTPException, status
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def require_razorpay() -> tuple[str, str]:
@@ -19,13 +22,23 @@ def require_razorpay() -> tuple[str, str]:
 
 async def create_razorpay_order(amount_paise: int, receipt: str) -> dict:
     key_id, secret = require_razorpay()
-    async with httpx.AsyncClient(timeout=12) as client:
-        response = await client.post(
-            "https://api.razorpay.com/v1/orders",
-            auth=(key_id, secret),
-            json={"amount": amount_paise, "currency": "INR", "receipt": receipt},
-        )
+    try:
+        async with httpx.AsyncClient(timeout=12) as client:
+            response = await client.post(
+                "https://api.razorpay.com/v1/orders",
+                auth=(key_id, secret),
+                json={"amount": amount_paise, "currency": "INR", "receipt": receipt},
+            )
+    except httpx.HTTPError as exc:
+        logger.warning("Razorpay order request failed: %s", type(exc).__name__)
+        raise HTTPException(status_code=502, detail="Could not reach Razorpay. Check the backend connection and retry.") from exc
     if response.is_error:
+        try:
+            provider_error = response.json().get("error", {})
+            error_code = provider_error.get("code") if isinstance(provider_error, dict) else None
+        except (ValueError, AttributeError):
+            error_code = None
+        logger.warning("Razorpay order rejected: HTTP %s, code=%s", response.status_code, error_code or "unavailable")
         raise HTTPException(status_code=502, detail="Razorpay could not create the payment order")
     return response.json()
 
