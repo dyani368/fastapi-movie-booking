@@ -9,7 +9,7 @@ from app.schemas import UserCreate, UserPublic, UserPrivate, UserUpdate, Token
 
 from fastapi.security import OAuth2PasswordRequestForm
 from app.auth import hash_password, verify_password, create_access_token, get_current_user
-from app.models import Booking, Movie
+from app.models import Booking
 
 router = APIRouter()
 
@@ -58,7 +58,7 @@ def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
     if result2.scalars().first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="email already registered")
 
-    new_user = models.User(username=user.username, email=user.email, phone_number=user.phone_number, hashed_password=hash_password(user.password))
+    new_user = models.User(username=user.username, email=user.email, hashed_password=hash_password(user.password))
 
     db.add(new_user)
     db.commit()
@@ -117,9 +117,12 @@ def delete_user_api(user_id: int, current_user: Annotated[models.User, Depends(g
 
     bookings = db.execute(select(Booking).where(Booking.user_id == user.id).with_for_update()).scalars().all()
     for booking in bookings:
-        movie = db.execute(select(Movie).where(Movie.id == booking.movie_id).with_for_update()).scalars().first()
-        if movie:
-            movie.seats_available += booking.seats_booked
+        screening = db.execute(select(models.Screening).where(models.Screening.id == booking.screening_id).with_for_update()).scalars().first()
+        if screening and booking.status in {"pending", "confirmed"}:
+            screening.seats_reserved -= booking.seats_booked
+            movie = db.execute(select(models.Movie).where(models.Movie.id == screening.movie_id).with_for_update()).scalars().first()
+            if movie:
+                movie.seats_available += booking.seats_booked
         db.delete(booking)
     db.delete(user)
     db.commit()

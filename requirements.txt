@@ -4,9 +4,9 @@ SQLAlchemy==2.0.51
 alembic==1.18.4
 psycopg2-binary==2.9.12
 pydantic-settings==2.14.2
-Jinja2==3.1.6
 python-multipart==0.0.32
 PyJWT==2.13.0
 pwdlib[argon2]==0.3.0
 email-validator==2.3.0
 httpx==0.28.1
+cryptography==45.0.7

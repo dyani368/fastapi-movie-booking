@@ -19,7 +19,8 @@ def test_fresh_database_migration_creates_schema(tmp_path):
 
     engine = create_engine(database_url)
     inspector = inspect(engine)
-    assert {"users", "movies", "booking", "alembic_version"} <= set(inspector.get_table_names())
+    assert {"users", "movies", "booking", "screenings", "processed_webhooks", "calendar_credentials", "oauth_states", "alembic_version"} <= set(inspector.get_table_names())
     assert "ck_movies_seats_nonnegative" in {item["name"] for item in inspector.get_check_constraints("movies")}
     assert "ck_booking_seats_positive" in {item["name"] for item in inspector.get_check_constraints("booking")}
+    assert {"screening_id", "status", "amount_paise", "razorpay_order_id"} <= {item["name"] for item in inspector.get_columns("booking")}
     engine.dispose()

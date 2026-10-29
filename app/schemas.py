@@ -1,71 +1,118 @@
-from pydantic import BaseModel, ConfigDict, Field, EmailStr
-from typing import Literal
+from datetime import datetime
 
-SHOW_TIMES = ("12:00 PM", "3:30 PM", "7:00 PM", "10:15 PM")
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-class MovieBase(BaseModel):
-    title: str = Field(min_length =1, max_length = 20)
-    director: str = Field(min_length = 1)
-    seats_available: int = Field(ge=0)
 
-class MovieCreate(MovieBase):
-    seats_available: int = Field(gt=0)
+class MovieCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=255)
+    director: str = Field(default="Unknown", max_length=255)
+    seats_available: int = Field(ge=0, default=0)
 
-class MovieResponse(MovieBase):
+
+class MovieResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-
     id: int
+    title: str
+    director: str
+    seats_available: int
     poster_path: str
+    overview: str | None = None
+    release_date: str | None = None
+    rating: float | None = None
+
 
 class MovieUpdate(BaseModel):
-    title: str|None = Field(default=None, min_length=1, max_length=20)
-    director: str|None = Field(default=None, min_length=1)
-    seats_available: int|None = Field(default=None, ge=1)
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    director: str | None = Field(default=None, min_length=1, max_length=255)
+    seats_available: int | None = Field(default=None, ge=0)
 
-class UserBase(BaseModel):
-    username : str = Field(min_length = 3, max_length = 15)
-    email : EmailStr
-    phone_number: str | None = Field(default=None, pattern=r"^\+[1-9]\d{7,14}$")
 
-class UserCreate(UserBase):
-    password : str = Field(min_length = 8)
+class TMDBMovieImport(BaseModel):
+    tmdb_id: int = Field(gt=0)
+    title: str = Field(min_length=1, max_length=255)
+    overview: str | None = Field(default=None, max_length=5000)
+    release_date: str | None = Field(default=None, max_length=20)
+    rating: float | None = Field(default=None, ge=0, le=10)
+    poster_path: str | None = Field(default=None, max_length=500, pattern=r"^/.*$")
+
+
+class CalendarCallbackPayload(BaseModel):
+    state: str = Field(min_length=20, max_length=100)
+    code: str = Field(min_length=1, max_length=4096)
+
+
+class UserCreate(BaseModel):
+    username: str = Field(min_length=3, max_length=100)
+    email: EmailStr
+    password: str = Field(min_length=8)
+
 
 class UserPublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-
     id: int
-    username: str = Field(min_length = 3, max_length = 15)
+    username: str
+
 
 class UserPrivate(UserPublic):
     email: str
-    phone_number: str | None = None
+    is_admin: bool = False
+
 
 class UserUpdate(BaseModel):
-    username: str|None = Field(default=None, min_length=1, max_length=15)
-    email: str|None = Field(default=None, min_length=1)
-    phone_number: str | None = Field(default=None, pattern=r"^\+[1-9]\d{7,14}$")
-    password: str|None = Field(default=None,min_length=8)
+    username: str | None = Field(default=None, min_length=3, max_length=100)
+    email: EmailStr | None = None
+    password: str | None = Field(default=None, min_length=8)
+
 
 class Token(BaseModel):
     access_token: str
     token_type: str
 
-class TokenData(BaseModel):
-    id: int | None = None
 
-class BookingBase(BaseModel):
-    movie_id : int 
-    seats_booked : int = Field(ge=1)
-    show_time: Literal["12:00 PM", "3:30 PM", "7:00 PM", "10:15 PM"]
+class ScreeningCreate(BaseModel):
+    starts_at: datetime
+    auditorium: str = Field(default="Screen 1", max_length=100)
+    capacity: int = Field(gt=0, le=1000)
+    price_paise: int = Field(gt=0, le=10000000)
 
-class BookingCreate(BookingBase):
-    pass
 
-class BookingResponse(BookingBase):
+class ScreeningResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+    id: int
+    movie_id: int
+    starts_at: datetime
+    auditorium: str
+    capacity: int
+    seats_reserved: int
+    seats_available: int
+    price_paise: int
+    currency: str
+    movie: MovieResponse | None = None
 
-    id : int
+
+class BookingCreate(BaseModel):
+    screening_id: int
+    seats_booked: int = Field(ge=1, le=8)
+
+
+class BookingResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
     user_id: int
-    
-    user: UserPublic
-    movie : MovieResponse
+    screening_id: int
+    seats_booked: int
+    status: str
+    amount_paise: int
+    expires_at: datetime | None
+    razorpay_order_id: str | None
+    razorpay_payment_id: str | None
+    calendar_event_id: str | None
+    screening: ScreeningResponse
+
+
+class PaymentOrderResponse(BaseModel):
+    booking: BookingResponse
+    key_id: str
+    order_id: str
+    amount: int
+    currency: str
